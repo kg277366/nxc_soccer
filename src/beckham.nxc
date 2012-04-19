@@ -12,11 +12,14 @@
 #define MM_PER_TURN	137
 #define TRACK_FRONT_MM	119
 
-
+// SENSORS
+#define ULTRASONIC IN_2
+#define COMPASS IN_1
+#define IR_SEEKER IN_4
 
 #define MM2DEG(x)	(360 * x / MM_PER_TURN)
 
-
+#define Q_SIZE 3;
 
 // TYPES
 
@@ -32,21 +35,49 @@ typedef struct {
 
 typedef struct {
 	int compass;
-	int ball_ir;
+	int ir_ball;
+	int distance;
 } SensorsValues;
 
+// QUEUE
+
+typedef struct {
+	int beg, end;
+	RobotPos steps[Q_SIZE];
+} Queue;
+
+int qGet(Queue &q, RobotPos &res) {
+	if (q.beg == q.end) {
+		return 0;
+	} else {
+		res = q.steps[q.beg]
+		q.beg = (q.beg + 1) % Q_SIZE;
+	}
+}
+
+int qPut(Queue &q, RobotPos &pos) {
+	q.steps[q.end] = pos;
+	q.end = (q.end + 1) % Q_SIZE;
+}
+
+inline int qEmpty(Queue &q) {
+	return q.beg == q.end;
+}
 
 // GLOBAL VARIABLES
 
 RobotPos myPos, destPos;
 BallPos ballPos;
 SensorsValues sensorsValues;
+Queue queue;
 
 // MUTEX
 mutex moveMutex;
 
 void init() {
-
+	SetSensorLowspeed(ULTRASONIC);
+	SetSensorLowspeed(COMPASS);
+	SetSensorLowspeed(IR_SEEKER);
 }
 
 void calibration() {
@@ -65,7 +96,29 @@ task AI() {
 }
 
 task readSensors() {
-
+	byte s1, s2, s3, s4, s5; //TODO policzyc z tego dokladniejsza wartosc
+	while(1) {
+		unsigned int a, b;
+		
+		a = CurrentTick();
+		
+		sensorsValues.compass = SensorHTCompass(COMPASS);
+		sensorsValues.distance = SensorUS(ULTRASONIC);
+		bool result = ReadSensorHTIRSeeker2AC(IR_SEEKER, sensorsValues.ir_ball, s1, s3, s5, s7, s9);
+		
+		b = CurrentTick();
+		
+		TextNumOut(0, LCD_LINE1, "Compass", 3, sensorsValues.compass);
+		TextNumOut(0, LCD_LINE2, "Time:",5, (b - a) / 72000); 
+		TextNumOut(0, LCD_LINE3, "Dir: ",4, sensorsValues.ir_ball);
+		TextNumOut(6, LCD_LINE4, "S1: ",3,s1);
+		TextNumOut(6, LCD_LINE5, "S2: ",3,s2);
+		TextNumOut(6, LCD_LINE6, "S3: ",3,s3);
+		TextNumOut(6, LCD_LINE7, "S4: ",3,s4);
+		TextNumOut(6, LCD_LINE8, "S5: ",3,s5);
+		
+		Wait(100);
+	}
 }
 
 task main() {
@@ -74,8 +127,3 @@ task main() {
 	
 	Precedes(readSensors, AI, move);
 }
-
-
-
-
-
