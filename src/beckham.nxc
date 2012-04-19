@@ -42,7 +42,38 @@ RobotPos myPos, destPos;
 BallPos ballPos;
 SensorsValues sensorsValues;
 
+// MUTEX
+mutex moveMutex;
 
+void init() {
+
+}
+
+void calibration() {
+
+}
+
+task move() {
+	while(1) {
+		Acquire(moveMutex);
+		Release(moveMutex);
+	}
+}
+
+task AI() {
+
+}
+
+task readSensors() {
+
+}
+
+task main() {
+	init();
+	calibration();
+	
+	Precedes(readSensors, AI, move);
+}
 
 
 
