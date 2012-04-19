@@ -1,4 +1,50 @@
 /* 2012.04.19 */
 
+#define PID_P		20
+#define PID_I		40
+#define PID_D		100
+
+
+// CONSTRUCTION PARAMS
+#define OUT_DRIVE_L	OUT_A
+#define OUT_DRIVE_R	OUT_C
+#define OUT_DRIVE	OUT_AC
+#define MM_PER_TURN	137
+#define TRACK_FRONT_MM	119
+
+
+
+#define MM2DEG(x)	(360 * x / MM_PER_TURN)
+
+
+
+// TYPES
+
+typedef struct {
+	int x, y;
+	int heading;
+} RobotPos;
+
+typedef struct {
+	int x, y;
+	int vx, vy;
+} BallPos;
+
+typedef struct {
+	int compass;
+	int ball_ir;
+} SensorsValues;
+
+
+// GLOBAL VARIABLES
+
+RobotPos myPos, destPos;
+BallPos ballPos;
+SensorsValues sensorsValues;
+
+
+
+
+
 
 
