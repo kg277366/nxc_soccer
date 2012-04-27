@@ -11,6 +11,10 @@
 #define OUT_DRIVE	OUT_AC
 #define MM_PER_TURN	137
 #define TRACK_FRONT_MM	119
+#define COMPASS_ACC 5
+#define FIELD_W 1200
+#define FIELD_H 1800
+#define POS_ACC 50
 
 // SENSORS
 #define ULTRASONIC IN_2
@@ -49,18 +53,18 @@ typedef struct {
 	RobotPos steps[Q_SIZE];
 } Queue;
 
-int qGet(Queue &q, RobotPos &res) {
-	if (q.beg == q.end) {
-		return 0;
-	} else {
-		res = q.steps[q.beg];
-		q.beg = (q.beg + 1) % Q_SIZE;
-	}
+void qGet(Queue &q, RobotPos &res) {
+	res = q.steps[q.beg];
+	q.beg = (q.beg + 1) % Q_SIZE;
 }
 
-int qPut(Queue &q, RobotPos &pos) {
+void qPut(Queue &q, RobotPos &pos) {
 	q.steps[q.end] = pos;
 	q.end = (q.end + 1) % Q_SIZE;
+}
+
+inline void qPeek(Queue &q, RobotPos &res) {
+	res = q.steps[q.beg];
 }
 
 inline int qEmpty(Queue &q) {
@@ -72,7 +76,7 @@ inline int qEmpty(Queue &q) {
 RobotPos myPos, destPos;
 BallPos ballPos;
 SensorsValues sensorsValues;
-Queue queue;
+//Queue queue;
 
 // MUTEX
 mutex moveMutex;
@@ -98,16 +102,63 @@ task AI() {
 
 }
 
-task readSensors() {
+void sensorCompass() {
+  sensorsValues.compass = SensorHTCompass(COMPASS);
+}
+
+void sensorUS() {
+  if ((sensorsValues.compass + COMPASS_ACC) % 90 < 2 * COMPASS_ACC) {
+		sensorsValues.distance = SensorUS(ULTRASONIC) * 10;
+    switch((sensorsValues.compass + COMAPSS_ACC) / 90) {
+      case 0 :
+      case 4 :
+        int nY = FIELD_H - sensorsValues.distance;
+        if (abs(nY - myPos.y) < POS_ACC) {
+          myPos.y = nY;
+        }
+        break;
+      case 2 :
+        int nY = sensorsValues.distance;
+        if (abs(nY - myPos.y) < POS_ACC) {
+          myPos.y = nY;
+        }
+        break;
+      case 3 :
+        int nX = sensorsValues.distance;
+        if (abs(nX - myPos.x) < POS_ACC) {
+          myPos.x = nX;
+        }
+        break;
+      case 1 :
+        int nX = FIELD_W - sensorsValues.distance;
+        if (abs(nX - myPos.x) < POS_ACC) {
+          myPos.x = nX;
+        }
+        break; //TODO ogarniamy czy to nie bedzie przeciwnik
+    }
+  }
+}
+
+void sensorIR() {
+  int dir, a256, b256;
 	byte s1, s2, s3, s4, s5; //TODO policzyc z tego dokladniejsza wartosc
+	bool result = ReadSensorHTIRSeeker2AC(IR_SEEKER, dir, s1, s2, s3, s4, s5);
+  sensorsValues.ir_ball = (myPos.heading + 30 * dir + 210) % 360;
+  a256 = sin(sensorsValues.ir_ball) * 256 / sin(sensorsValues.ir_ball + 90);
+  b256 = a256 * myPos.x + myPos.y * 256;
+  
+ 
+}
+
+task readSensors() {
 	while(1) {
 		unsigned int a, b;
 
 		a = CurrentTick();
 
-		sensorsValues.compass = SensorHTCompass(COMPASS);
-		sensorsValues.distance = SensorUS(ULTRASONIC);
-		bool result = ReadSensorHTIRSeeker2AC(IR_SEEKER, sensorsValues.ir_ball, s1, s2, s3, s4, s5);
+
+    sensorCompass();
+    sensorUS();
 
 		b = CurrentTick();
 
