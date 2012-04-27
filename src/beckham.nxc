@@ -17,6 +17,8 @@
 #define FIELD_W 1200
 #define FIELD_H 1800
 #define POS_ACC 50
+#define BALL_DEF_DIST 1000
+#define IN_POS_ACC 20
 
 // SENSORS
 #define ULTRASONIC IN_2
@@ -74,7 +76,7 @@ inline int qEmpty(Queue &q) {
 }
 
 // GLOBAL VARIABLES
-
+int north;
 RobotPos myPos, destPos;
 BallPos ballPos;
 SensorsValues sensorsValues;
@@ -91,26 +93,52 @@ void init() {
 
 void calibration() {
 
+  north = SensorHTCompass(COMPASS);
+  sensorsValues.compass = 0;
+  
+  myPos.y = FIELD_H - SensorUS(ULTRASONIC) * 10;
+  rotate2w(90);
+  myPos.x = FIELD_W - SensorUS(ULTRASONIC) * 10;
+  rotate2w(-90);
+
+}
+
+inline int onPosition() {
+  return (destPos.x < 0 || (abs(destPos.x - myPos.x) < IN_POS_ACC
+    && abs(destPos.y - myPos.y) < IN_POS_ACC));
 }
 
 task move() {
+  int x, y, dist, ro;
 	while(1) {
 		Acquire(moveMutex);
+    if (onPosition()) { // Only rotation
+      rotate2w(destPos.heading - myPos.heading);
+    } else {
+      x = destPos.x - myPos.x;
+      y = destPos.y - myPos.y;
+      // TODO tutaj powinno sie wyliczyc kat obrotu i odleglosc
+    }
 		Release(moveMutex);
 	}
 }
 
 task AI() {
+  
+}
 
+task ultraAI() {
+  // TODO tutaj polaczane jechanie i AI
 }
 
 void sensorCompass() {
-  sensorsValues.compass = SensorHTCompass(COMPASS);
+  sensorsValues.compass = SensorHTCompass(COMPASS) - north;
 }
 
 void sensorUS() {
+
+  sensorsValues.distance = SensorUS(ULTRASONIC) * 10;
   if ((sensorsValues.compass + COMPASS_ACC) % 90 < 2 * COMPASS_ACC) {
-		sensorsValues.distance = SensorUS(ULTRASONIC) * 10;
     switch((sensorsValues.compass + COMAPSS_ACC) / 90) {
       case 0 :
       case 4 :
@@ -141,15 +169,18 @@ void sensorUS() {
   }
 }
 
+void findBall() {
+  ball_dist = sensorsValues.distance < BALL_DEF_DIST ?
+    sensorsValues.distance : BALL_DEF_DIST;
+  ballPos.x = myPos.x + (ball_dist * sin256(sensorsValues.ir_ball)) / 256;
+  ballPos.y = myPos.y + (ball_dist * sin256(sensorsValues.ir_ball + 90)) / 256;
+}
+
 void sensorIR() {
-  int dir, a256, b256;
+  int dir;
 	byte s1, s2, s3, s4, s5; //TODO policzyc z tego dokladniejsza wartosc
 	bool result = ReadSensorHTIRSeeker2AC(IR_SEEKER, dir, s1, s2, s3, s4, s5);
   sensorsValues.ir_ball = (myPos.heading + 30 * dir + 210) % 360;
-  a256 = sin(sensorsValues.ir_ball) * 256 / sin(sensorsValues.ir_ball + 90);
-  b256 = a256 * myPos.x + myPos.y * 256;
-  
- 
 }
 
 task readSensors() {
@@ -161,6 +192,7 @@ task readSensors() {
 
     sensorCompass();
     sensorUS();
+    sensorIR();
 
 		b = CurrentTick();
 
