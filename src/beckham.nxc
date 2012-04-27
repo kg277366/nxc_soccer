@@ -1,5 +1,7 @@
 /* 2012.04.19 */
 
+#include "sin256.h"
+
 #define PID_P		20
 #define PID_I		40
 #define PID_D		100
