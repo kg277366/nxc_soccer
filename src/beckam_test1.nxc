@@ -178,16 +178,20 @@ task ultraAI() {
     switch(ai_state) {
       case SEARCH_S :
 		    findBall();
-
-		    if (sensorsValues.distance > 250) {
-			    run(50);
-		    } else {
-          ai_state = SHOT_S;        
-		    }
+        runI(50);
+        while(sensorsValues.distance > 250) {
+          Wait(100);
+        }
+        stopI();
+        ai_state = SHOT_S;
       break;
       case SHOT_S :
         if (sensorsValues.compass < 90 || sensorsValues.compass > 270) {
-          run(sensorsValues.distance - 30);
+          run(sensorsValues.distance);
+          int rot = sensorsValues.compass < 90 ?
+             - myPos.heading : 360 - myPos.heading;
+
+          rotate1w(rot);
           kick();
           // do przodu
         } else {
@@ -196,7 +200,8 @@ task ultraAI() {
           int dist = sensorsValues.distance;
           rotate2w(app * 20);
           run(dist);
-          rotate1w(-180 * app);
+          int rot = app > 0 ? 360 - myPos.heading : - myPos.heading;
+          rotate1w(rot);
           kick();
         }
         ai_state = SEARCH_S;
