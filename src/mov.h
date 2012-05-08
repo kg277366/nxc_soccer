@@ -12,3 +12,16 @@ void rotate2w (int deg) {
      RotateMotorExPID(MOV_outputs, 100, deg * MM2DEG(PI * TRACK_FRONT_MM) / 360, 100, true, true, PID_P, PID_I, PID_D);
 }
 
+void run (int mm) {
+	RotateMotorExPID(MOV_outputs, 100, MM2DEG(mm), 0, true, true, PID_P, PID_I, PID_D);
+}
+
+void kick () {
+	RotateMotorPID(OUT_KICK, 100, 90, PID_P, PID_I, PID_D);
+	RotateMotorPID(OUT_KICK, 100, -90, PID_P, PID_I, PID_D);
+}
+
+void MOV_init() {
+	ResetAllTachoCounts(OUT_KICK);
+}
+
