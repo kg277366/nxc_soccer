@@ -10,7 +10,10 @@ void rotate1w (int deg) {
 
 void rotate2w (int deg) {
      byte outputs[2] = {OUT_DRIVE_L, OUT_DRIVE_R};
-     RotateMotorExPID(outputs, 100, deg * MM2DEG(PI * TRACK_FRONT_MM) / 360, 100, true, true, PID_P, PID_I, PID_D);
+     if (deg >= 0)
+        RotateMotorExPID(outputs, 100, deg * MM2DEG(PI * TRACK_FRONT_MM) / 360, 100, true, true, PID_P, PID_I, PID_D);
+     else
+         RotateMotorExPID(outputs, 100, -deg * MM2DEG(PI * TRACK_FRONT_MM) / 360, -100, true, true, PID_P, PID_I, PID_D);
      ResetAllTachoCounts(OUT_DRIVE);
      Wait(10);
 }
@@ -18,6 +21,8 @@ void rotate2w (int deg) {
 void run (int mm) {
   byte outputs[2] = {OUT_DRIVE_L, OUT_DRIVE_R};
   RotateMotorExPID(outputs, 100, MM2DEG(mm), 0, true, true, PID_P, PID_I, PID_D);
+  myPos.x += sin256(myPos.heading) * mm / 256;
+  myPos.y += sin256(myPos.heading + 90) * mm / 256;
 }
 
 void kick () {
