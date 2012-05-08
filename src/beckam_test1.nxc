@@ -167,27 +167,46 @@ void findBall() {
 	}
 }
 
+int ai_state = 1;
+
+#define SEARCH_S 1
+#define SHOT_S 2
+
 task ultraAI() {
-	Wait(1000);
-	while (1) {
-		findBall();
-		PlaySound(SOUND_DOUBLE_BEEP);
-	}
-	while (1) {
-		while (abs(sensorsValues.compass - sensorsValues.ir_ball) > 20) {
-			rotate2w(sensorsValues.compass - sensorsValues.ir_ball);
-			//PlaySound(SOUND_LOW_BEEP);
-			Wait(1000);
-
-		}
-
-		PlaySound(SOUND_DOUBLE_BEEP);
-		Wait(5000);
-		if (sensorsValues.distance > 100) {
-			run(50);
-		} else {
-		}
-	}
+  while (1) {
+    Wait(1000);
+    switch(ai_state) {
+      case SEARCH_S :
+		    findBall();
+		    PlaySound(SOUND_DOUBLE_BEEP);
+		    if (sensorsValues.distance > 250) {
+			    run(10);
+		    } else {
+          ai_state = SHOT_S;        
+		    }
+      break;
+      case SHOT_S :
+        if (sensorsValues.compass < 90 || sensorsValues.compass > 270) {
+          while(sensorsValues.distance > 30) {
+            run(30);
+          }
+          kick();
+          // do przodu
+        } else {
+          // do tylu
+          int app = myPos.x > FIELD_W / 2 ? -1 : 1;
+          
+          rotate2w(app * 20);
+          while(sensorsValues.distance > 30) {
+            run(30);
+          }
+          rotate1w(-180 * app);
+          kick();
+        }
+        ai_state = SEARCH_S;
+      break;
+	  }
+  }
 }
 
 void sensorCompass() {
@@ -261,6 +280,8 @@ task readSensors() {
 		TextNumOut(0, LCD_LINE2, "Time:           ",6, (b - a));
 		TextNumOut(0, LCD_LINE3, "Dir:            ",5, sensorsValues.ir_ball);
 		TextNumOut(0, LCD_LINE4, "Dist:           ",6, sensorsValues.distance);
+		TextNumOut(0, LCD_LINE5, "X:              ",6, myPos.x);
+		TextNumOut(0, LCD_LINE6, "Y:              ",6, myPos.y);
 
 		Wait(100);
 	}
