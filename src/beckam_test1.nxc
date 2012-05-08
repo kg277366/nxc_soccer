@@ -149,6 +149,8 @@ task AI() {
 }
 
 void findBall() {
+  int timeout = 200;
+
 	while (1) {
 		int dir = sensorsValues.ir_dir;
 		int power = ((dir - 5) * 75) / 5;
@@ -165,6 +167,7 @@ void findBall() {
 			break;
 		}
 		Wait(20);
+    if (!timeout--) break;
 	}
 }
 
@@ -174,6 +177,7 @@ int ai_state = 1;
 #define SHOT_S 2
 
 task ultraAI() {
+ 
   while (1) {
     Wait(1000);
     switch(ai_state) {
