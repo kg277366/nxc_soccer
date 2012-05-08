@@ -1,0 +1,236 @@
+/* 2012.04.19 */
+
+#include "sin256.h"
+
+#define PID_P		20
+#define PID_I		40
+#define PID_D		100
+
+
+// CONSTRUCTION PARAMS
+#define OUT_DRIVE_L	OUT_A
+#define OUT_DRIVE_R	OUT_C
+#define OUT_DRIVE	OUT_AC
+#define OUT_KICK	OUT_B
+#define MM_PER_TURN	137
+#define TRACK_FRONT_MM	119
+#define COMPASS_ACC 5
+#define FIELD_W 1200
+#define FIELD_H 1800
+#define POS_ACC 50
+#define BALL_DEF_DIST 1000
+#define IN_POS_ACC 20
+
+// SENSORS
+#define ULTRASONIC IN_2
+#define COMPASS IN_1
+#define IR_SEEKER IN_4
+
+#define MM2DEG(x)	(360 * x / MM_PER_TURN)
+
+#define Q_SIZE 4;
+
+#define TextNumOut(xPos,yPos,str,col,num) TextOut(xPos,yPos,str); \
+        NumOut(xPos+6*col,yPos,num)
+
+
+// TYPES
+
+typedef struct {
+	int x, y;
+	int heading;
+} RobotPos;
+
+typedef struct {
+	int x, y;
+	int vx, vy;
+} BallPos;
+
+typedef struct {
+	int compass;
+	int ir_ball;
+	int distance;
+} SensorsValues;
+
+// QUEUE
+
+typedef struct {
+	int beg, end;
+	RobotPos steps[Q_SIZE];
+} Queue;
+
+void qGet(Queue &q, RobotPos &res) {
+	res = q.steps[q.beg];
+	q.beg = (q.beg + 1) % Q_SIZE;
+}
+
+void qPut(Queue &q, RobotPos &pos) {
+	q.steps[q.end] = pos;
+	q.end = (q.end + 1) % Q_SIZE;
+}
+
+inline void qPeek(Queue &q, RobotPos &res) {
+	res = q.steps[q.beg];
+}
+
+inline int qEmpty(Queue &q) {
+	return q.beg == q.end;
+}
+
+// GLOBAL VARIABLES
+int north;
+RobotPos myPos, destPos;
+BallPos ballPos;
+SensorsValues sensorsValues;
+//Queue queue;
+
+// MUTEX
+mutex moveMutex;
+
+// Movement utilities
+#include "mov.h"
+
+void init() {
+  MOV_init();
+	SetSensorLowspeed(ULTRASONIC);
+	SetSensorLowspeed(COMPASS);
+	SetSensorLowspeed(IR_SEEKER);
+}
+
+void calibration() {
+
+  north = SensorHTCompass(COMPASS);
+  sensorsValues.compass = 0;
+  
+  myPos.y = FIELD_H - SensorUS(ULTRASONIC) * 10;
+  rotate2w(90);
+  myPos.x = FIELD_W - SensorUS(ULTRASONIC) * 10;
+  rotate2w(-90);
+
+}
+
+inline int onPosition() {
+  return (destPos.x < 0 || (abs(destPos.x - myPos.x) < IN_POS_ACC
+    && abs(destPos.y - myPos.y) < IN_POS_ACC));
+}
+
+task move() {
+  int x, y, dist, ro;
+	while(1) {
+		Acquire(moveMutex);
+    if (onPosition()) { // Only rotation
+      rotate2w(destPos.heading - myPos.heading);
+    } else {
+      x = destPos.x - myPos.x;
+      y = destPos.y - myPos.y;
+      // TODO tutaj powinno sie wyliczyc kat obrotu i odleglosc
+    }
+		Release(moveMutex);
+	}
+}
+
+task AI() {
+  
+}
+
+task ultraAI() {
+  // TODO tutaj polaczane jechanie i AI
+}
+
+void sensorCompass() {
+  sensorsValues.compass = SensorHTCompass(COMPASS) - north;
+}
+
+void sensorUS() {
+
+  sensorsValues.distance = SensorUS(ULTRASONIC) * 10;
+  if ((sensorsValues.compass + COMPASS_ACC) % 90 < 2 * COMPASS_ACC) {
+    int nY, nX;
+    switch((sensorsValues.compass + COMPASS_ACC) / 90) {
+      case 0 :
+      case 4 :
+        nY = FIELD_H - sensorsValues.distance;
+        if (abs(nY - myPos.y) < POS_ACC) {
+          myPos.y = nY;
+        }
+        break;
+      case 2 :
+        nY = sensorsValues.distance;
+        if (abs(nY - myPos.y) < POS_ACC) {
+          myPos.y = nY;
+        }
+        break;
+      case 3 :
+        nX = sensorsValues.distance;
+        if (abs(nX - myPos.x) < POS_ACC) {
+          myPos.x = nX;
+        }
+        break;
+      case 1 :
+        nX = FIELD_W - sensorsValues.distance;
+        if (abs(nX - myPos.x) < POS_ACC) {
+          myPos.x = nX;
+        }
+        break; //TODO ogarniamy czy to nie bedzie przeciwnik
+    }
+  }
+}
+
+void findBall() {
+  int ball_dist = sensorsValues.distance < BALL_DEF_DIST ?
+    sensorsValues.distance : BALL_DEF_DIST;
+  ballPos.x = myPos.x + (ball_dist * sin256(sensorsValues.ir_ball)) / 256;
+  ballPos.y = myPos.y + (ball_dist * sin256(sensorsValues.ir_ball + 90)) / 256;
+}
+
+void sensorIR() {
+  int dir;
+	byte s1, s2, s3, s4, s5; //TODO policzyc z tego dokladniejsza wartosc
+	bool result = ReadSensorHTIRSeeker2AC(IR_SEEKER, dir, s1, s2, s3, s4, s5);
+  sensorsValues.ir_ball = (myPos.heading + 30 * dir + 210) % 360;
+}
+
+task readSensors() {
+	while(1) {
+		unsigned int a, b;
+		int s1, s2, s3, s4, s5;
+
+		a = CurrentTick();
+
+
+    sensorCompass();
+    sensorUS();
+    sensorIR();
+
+		b = CurrentTick();
+
+		TextNumOut(0, LCD_LINE1, "Compass:        ",9, sensorsValues.compass);
+		TextNumOut(0, LCD_LINE2, "Time:           ",6, (b - a));
+		TextNumOut(0, LCD_LINE3, "Dir:            ",4, sensorsValues.ir_ball);
+		TextNumOut(6, LCD_LINE4, "S1:             ",3,s1);
+		TextNumOut(6, LCD_LINE5, "S2:             ",3,s2);
+		TextNumOut(6, LCD_LINE6, "S3:             ",3,s3);
+		TextNumOut(6, LCD_LINE7, "S4:             ",3,s4);
+		TextNumOut(6, LCD_LINE8, "S5:             ",3,s5);
+
+		Wait(100);
+	}
+}
+
+task main() {
+init();
+while(1) {
+//run(100);
+rotate1w(90);
+run(100);
+rotate1w(90);
+run(100);
+rotate1w(90);
+run(100);
+rotate1w(90);
+kick();
+}
+	calibration();
+
+	Precedes(readSensors);//, AI, move);
+}
