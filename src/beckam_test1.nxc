@@ -177,12 +177,14 @@ task ultraAI() {
     Wait(1000);
     switch(ai_state) {
       case SEARCH_S :
-		    findBall();
-        runI(50);
         while(sensorsValues.distance > 250) {
+          if (sensorsValues.ir_dir != 5) {
+            stopI();
+            findBall();
+            runI(50);
+          }
           Wait(100);
         }
-        stopI();
         ai_state = SHOT_S;
       break;
       case SHOT_S :
