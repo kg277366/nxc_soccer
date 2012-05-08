@@ -142,7 +142,12 @@ task AI() {
 }
 
 task ultraAI() {
-  // TODO tutaj polaczane jechanie i AI
+  while (1) {
+    while (abs(sensorsValues.compass - sensorsValues.ir_ball) > 30) {
+      rotate2w(sensorsValues.compass - sensorsValues.ir_ball);
+    }
+     
+  }
 }
 
 void sensorCompass() {
