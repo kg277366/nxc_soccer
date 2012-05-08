@@ -20,6 +20,7 @@
 #define POS_ACC 50
 #define BALL_DEF_DIST 1000
 #define IN_POS_ACC 20
+#define KICK_TIMEOUT 2000 // 2 s
 
 // SENSORS
 #define ULTRASONIC IN_2
@@ -167,7 +168,7 @@ void findBall() {
 			break;
 		}
 		Wait(20);
-    if (!timeout--) break;
+    if (!timeout--) { PlaySound(SOUND_LOW_BEEP);break;}
 	}
 }
 
@@ -188,7 +189,7 @@ task ultraAI() {
             findBall();
             runI(50);
           }
-          Wait(100);
+          Wait(500);
         }
         ai_state = SHOT_S;
       break;
@@ -200,6 +201,8 @@ task ultraAI() {
 
           rotate1w(rot);
           kick();
+          run(-100);
+          findBall();
           // do przodu
         } else {
           // do tylu
@@ -210,6 +213,8 @@ task ultraAI() {
           int rot = app > 0 ? 360 - myPos.heading : - myPos.heading;
           rotate1w(rot);
           kick();
+          run(-100);
+          findBall();
         }
         ai_state = SEARCH_S;
       break;
@@ -295,8 +300,9 @@ task readSensors() {
 	}
 }
 
+
 task main() {
-	init(); 
+	init();
 	calibration();
 	Precedes(readSensors, ultraAI);//, AI, move);
 }

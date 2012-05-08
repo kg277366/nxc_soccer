@@ -57,12 +57,17 @@ void stopI () {
 }
 
 void kick () {
-	RotateMotorPID(OUT_KICK, 100, -60, PID_P, PID_I, PID_D);
-	RotateMotorPID(OUT_KICK, 100, 60, PID_P, PID_I, PID_D);
+	OnRev(OUT_KICK, 100);
+	Wait(200);
+	Off(OUT_KICK);
+	RotateMotorPID(OUT_KICK, 100, - MotorTachoCount(OUT_KICK), PID_P, PID_I, PID_D);
 }
 
 void MOV_init() {
+  OnFwd(OUT_KICK, 40);
+  Wait(1000);
 	ResetAllTachoCounts(OUT_KICK);
 	Wait(10);
+  Off(OUT_KICK);
 }
 
