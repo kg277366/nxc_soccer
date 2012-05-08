@@ -259,8 +259,8 @@ task readSensors() {
 
 		TextNumOut(0, LCD_LINE1, "Compass:        ",9, sensorsValues.compass);
 		TextNumOut(0, LCD_LINE2, "Time:           ",6, (b - a));
-		TextNumOut(0, LCD_LINE3, "Dir:            ",4, sensorsValues.ir_ball);
-		TextNumOut(0, LCD_LINE4, "Dist:           ",3, sensorsValues.distance);
+		TextNumOut(0, LCD_LINE3, "Dir:            ",5, sensorsValues.ir_ball);
+		TextNumOut(0, LCD_LINE4, "Dist:           ",6, sensorsValues.distance);
 
 		Wait(100);
 	}
