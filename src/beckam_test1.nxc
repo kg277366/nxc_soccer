@@ -31,7 +31,7 @@
 #define Q_SIZE 4;
 
 #define TextNumOut(xPos,yPos,str,col,num) TextOut(xPos,yPos,str); \
-        NumOut(xPos+6*col,yPos,num)
+	NumOut(xPos+6*col,yPos,num)
 
 
 // TYPES
@@ -49,6 +49,7 @@ typedef struct {
 typedef struct {
 	int compass;
 	int ir_ball;
+	int ir_dir;
 	int distance;
 } SensorsValues;
 
@@ -91,7 +92,7 @@ mutex moveMutex;
 #include "mov.h"
 
 void init() {
-  MOV_init();
+	MOV_init();
 	SetSensorLowspeed(ULTRASONIC);
 	SetSensorLowspeed(COMPASS);
 	SetSensorLowspeed(IR_SEEKER);
@@ -99,141 +100,174 @@ void init() {
 
 void calibration() {
 
-  north = SensorHTCompass(COMPASS);
-  sensorsValues.compass = 0;
-  
-  myPos.y = FIELD_H - SensorUS(ULTRASONIC) * 10;
-  rotate2w(90);
-  myPos.x = FIELD_W - SensorUS(ULTRASONIC) * 10;
-  rotate2w(-90);
+	north = SensorHTCompass(COMPASS);
+	sensorsValues.compass = 0;
+
+
+	Wait(500);
+	myPos.y = FIELD_H - SensorUS(ULTRASONIC) * 10;
+	rotate2w(90);
+	Wait(500);
+	myPos.x = FIELD_W - SensorUS(ULTRASONIC) * 10;
+	rotate2w(-90);
+	//Wait(2000);
+
+	PlaySound(SOUND_DOUBLE_BEEP);
 
 }
 
 inline int onPosition() {
-  return (destPos.x < 0 || (abs(destPos.x - myPos.x) < IN_POS_ACC
-    && abs(destPos.y - myPos.y) < IN_POS_ACC));
+	return (destPos.x < 0 || (abs(destPos.x - myPos.x) < IN_POS_ACC
+				&& abs(destPos.y - myPos.y) < IN_POS_ACC));
 }
 
 task move() {
-  int x, y, dist, ro;
-	while(1) {
-		Acquire(moveMutex);
-    if (onPosition()) { // Only rotation
-      rotate2w(destPos.heading - myPos.heading);
-    } else {
-      x = destPos.x - myPos.x;
-      y = destPos.y - myPos.y;
-      int deg = 3.14 * atan2(x, y) / 180;
-      roatate2w(destPos.heading - deg);
-      int dist = sqrt(x*x + y*y);
-      run(dist);
-    }
-		Release(moveMutex);
-	}
+	int x, y, dist, ro;
+	/*while(1) {
+	  Acquire(moveMutex);
+	  if (onPosition()) { // Only rotation
+	  rotate2w(destPos.heading - myPos.heading);
+	  } else {
+	  x = destPos.x - myPos.x;
+	  y = destPos.y - myPos.y;
+	  int deg = 3.14 * atan2(x, y) / 180;
+	  roatate2w(destPos.heading - deg);
+	  int dist = sqrt(x*x + y*y);
+	  run(dist);
+	  }
+	  Release(moveMutex);
+	  } */
 }
 
 task AI() {
-  while(1) {
-    destPos.x = 100;
-    destPos.y = 50;
-    destPos.heading = 50;
-  } 
+	while(1) {
+		destPos.x = 100;
+		destPos.y = 50;
+		destPos.heading = 50;
+	} 
+}
+
+void findBall() {
+	while (1) {
+		int dir = sensorsValues.ir_dir;
+		int power = ((dir - 5) * 75) / 5;
+
+		if (dir != 5) {
+			int lpower = -power;
+			int rpower = power;
+			OnFwd(OUT_DRIVE_L, lpower);
+			OnFwd(OUT_DRIVE_R, rpower);
+		}
+		else {
+			Off(OUT_DRIVE_L);
+			Off(OUT_DRIVE_R);
+			break;
+		}
+		Wait(20);
+	}
 }
 
 task ultraAI() {
-  while (1) {
-    while (abs(sensorsValues.compass - sensorsValues.ir_ball) > 30) {
-      rotate2w(sensorsValues.compass - sensorsValues.ir_ball);
-    }
-    if (sensorsValues.distance > 100) {
-      run(50);
-    } else {
-    }
-  }
+	Wait(1000);
+	while (1) {
+		findBall();
+		PlaySound(SOUND_DOUBLE_BEEP);
+	}
+	while (1) {
+		while (abs(sensorsValues.compass - sensorsValues.ir_ball) > 20) {
+			rotate2w(sensorsValues.compass - sensorsValues.ir_ball);
+			//PlaySound(SOUND_LOW_BEEP);
+			Wait(1000);
+
+		}
+
+		PlaySound(SOUND_DOUBLE_BEEP);
+		Wait(5000);
+		if (sensorsValues.distance > 100) {
+			run(50);
+		} else {
+		}
+	}
 }
 
 void sensorCompass() {
-  sensorsValues.compass = SensorHTCompass(COMPASS) - north;
+	sensorsValues.compass = SensorHTCompass(COMPASS) - north;
+	myPos.heading = sensorsValues.compass;
 }
 
 void sensorUS() {
 
-  sensorsValues.distance = SensorUS(ULTRASONIC) * 10;
-  if ((sensorsValues.compass + COMPASS_ACC) % 90 < 2 * COMPASS_ACC) {
-    int nY, nX;
-    switch((sensorsValues.compass + COMPASS_ACC) / 90) {
-      case 0 :
-      case 4 :
-        nY = FIELD_H - sensorsValues.distance;
-        if (abs(nY - myPos.y) < POS_ACC) {
-          myPos.y = nY;
-        }
-        break;
-      case 2 :
-        nY = sensorsValues.distance;
-        if (abs(nY - myPos.y) < POS_ACC) {
-          myPos.y = nY;
-        }
-        break;
-      case 3 :
-        nX = sensorsValues.distance;
-        if (abs(nX - myPos.x) < POS_ACC) {
-          myPos.x = nX;
-        }
-        break;
-      case 1 :
-        nX = FIELD_W - sensorsValues.distance;
-        if (abs(nX - myPos.x) < POS_ACC) {
-          myPos.x = nX;
-        }
-        break; //TODO ogarniamy czy to nie bedzie przeciwnik
-    }
-  }
+	sensorsValues.distance = SensorUS(ULTRASONIC) * 10;
+	if ((sensorsValues.compass + COMPASS_ACC) % 90 < 2 * COMPASS_ACC) {
+		int nY, nX;
+		switch((sensorsValues.compass + COMPASS_ACC) / 90) {
+			case 0 :
+			case 4 :
+				nY = FIELD_H - sensorsValues.distance;
+				if (abs(nY - myPos.y) < POS_ACC) {
+					myPos.y = nY;
+				}
+				break;
+			case 2 :
+				nY = sensorsValues.distance;
+				if (abs(nY - myPos.y) < POS_ACC) {
+					myPos.y = nY;
+				}
+				break;
+			case 3 :
+				nX = sensorsValues.distance;
+				if (abs(nX - myPos.x) < POS_ACC) {
+					myPos.x = nX;
+				}
+				break;
+			case 1 :
+				nX = FIELD_W - sensorsValues.distance;
+				if (abs(nX - myPos.x) < POS_ACC) {
+					myPos.x = nX;
+				}
+				break; //TODO ogarniamy czy to nie bedzie przeciwnik
+		}
+	}
 }
 
-void findBall() {
-  int ball_dist = sensorsValues.distance < BALL_DEF_DIST ?
-    sensorsValues.distance : BALL_DEF_DIST;
-  ballPos.x = myPos.x + (ball_dist * sin256(sensorsValues.ir_ball)) / 256;
-  ballPos.y = myPos.y + (ball_dist * sin256(sensorsValues.ir_ball + 90)) / 256;
+void findBall2() {
+	int ball_dist = sensorsValues.distance < BALL_DEF_DIST ?
+		sensorsValues.distance : BALL_DEF_DIST;
+	ballPos.x = myPos.x + (ball_dist * sin256(sensorsValues.ir_ball)) / 256;
+	ballPos.y = myPos.y + (ball_dist * sin256(sensorsValues.ir_ball + 90)) / 256;
 }
 
 void sensorIR() {
-  int dir;
+	int dir;
 	byte s1, s2, s3, s4, s5; //TODO policzyc z tego dokladniejsza wartosc
 	bool result = ReadSensorHTIRSeeker2AC(IR_SEEKER, dir, s1, s2, s3, s4, s5);
-  sensorsValues.ir_ball = (myPos.heading + 30 * dir + 210) % 360;
+	sensorsValues.ir_ball = (myPos.heading + 30 * dir + 210) % 360;
+	sensorsValues.ir_dir = dir;
 }
 
 task readSensors() {
 	while(1) {
 		unsigned int a, b;
-		int s1, s2, s3, s4, s5;
-
 		a = CurrentTick();
 
 
-    sensorCompass();
-    sensorUS();
-    sensorIR();
+		sensorCompass();
+		sensorUS();
+		sensorIR();
 
 		b = CurrentTick();
 
 		TextNumOut(0, LCD_LINE1, "Compass:        ",9, sensorsValues.compass);
 		TextNumOut(0, LCD_LINE2, "Time:           ",6, (b - a));
 		TextNumOut(0, LCD_LINE3, "Dir:            ",4, sensorsValues.ir_ball);
-		TextNumOut(6, LCD_LINE4, "S1:             ",3,s1);
-		TextNumOut(6, LCD_LINE5, "S2:             ",3,s2);
-		TextNumOut(6, LCD_LINE6, "S3:             ",3,s3);
-		TextNumOut(6, LCD_LINE7, "S4:             ",3,s4);
-		TextNumOut(6, LCD_LINE8, "S5:             ",3,s5);
+		TextNumOut(0, LCD_LINE4, "Dist:           ",3, sensorsValues.distance);
 
 		Wait(100);
 	}
 }
 
 task main() {
-  init(); 
-  calibration();
+	init(); 
+	calibration();
 	Precedes(readSensors, ultraAI);//, AI, move);
 }
