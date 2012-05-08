@@ -57,8 +57,8 @@ void stopI () {
 }
 
 void kick () {
-	RotateMotorPID(OUT_KICK, 100, -90, PID_P, PID_I, PID_D);
-	RotateMotorPID(OUT_KICK, 100, 90, PID_P, PID_I, PID_D);
+	RotateMotorPID(OUT_KICK, 100, -60, PID_P, PID_I, PID_D);
+	RotateMotorPID(OUT_KICK, 100, 60, PID_P, PID_I, PID_D);
 }
 
 void MOV_init() {
