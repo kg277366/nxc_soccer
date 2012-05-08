@@ -123,18 +123,38 @@ task move() {
     } else {
       x = destPos.x - myPos.x;
       y = destPos.y - myPos.y;
-      // TODO tutaj powinno sie wyliczyc kat obrotu i odleglosc
+      int deg = 3.14 * atan2(x, y) / 180;
+      roatate2w(destPos.heading - deg);
+      int dist = sqrt(x*x + y*y);
+      run(dist);
     }
 		Release(moveMutex);
 	}
 }
 
 task AI() {
-  
+  while(1) {
+    destPos.x = 100;
+    destPos.y = 50;
+    destPos.heading = 50;
+  } 
 }
 
 task ultraAI() {
-  // TODO tutaj polaczane jechanie i AI
+  while (1) {
+    while (abs(sensorsValues.compass - sensorsValues.ir_ball) > 30) {
+      rotate2w(sensorsValues.compass - sensorsValues.ir_ball);
+    }
+    if (sensorsValues.distance > 100) {
+      run(50);
+    } else {
+      int rot = 3.14 * atan2(sensorsValues.distance - 100) / 180; // or +
+      rotate2w(rot);
+      run(sqrt(sensorsValues.distance * sensorsValues.distance + 10000));
+      rotate1w(180);
+      kick();
+    }
+  }
 }
 
 void sensorCompass() {
@@ -218,19 +238,10 @@ task readSensors() {
 }
 
 task main() {
-init();
-while(1) {
-//run(100);
-rotate1w(90);
-run(100);
-rotate1w(90);
-run(100);
-rotate1w(90);
-run(100);
-rotate1w(90);
-kick();
-}
-	calibration();
-
-	Precedes(readSensors);//, AI, move);
+  init();
+  myPos.x = 0;
+  myPos.y = 0;
+  myPos.heading = 0;
+  
+	Precedes(readSensors, AI);//, AI, move);
 }
