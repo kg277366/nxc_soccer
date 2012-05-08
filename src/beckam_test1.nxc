@@ -148,11 +148,6 @@ task ultraAI() {
     if (sensorsValues.distance > 100) {
       run(50);
     } else {
-      int rot = 3.14 * atan2(sensorsValues.distance - 100) / 180; // or +
-      rotate2w(rot);
-      run(sqrt(sensorsValues.distance * sensorsValues.distance + 10000));
-      rotate1w(180);
-      kick();
     }
   }
 }
@@ -238,12 +233,7 @@ task readSensors() {
 }
 
 task main() {
-  init();
-  myPos.x = 0;
-  myPos.y = 0;
-  myPos.heading = 0;
-  destPos.x = 0;
-  destPos.y = 0;
-  destPos.heading = 0; 
-	Precedes(readSensors, move, AI);//, AI, move);
+  init(); 
+  calibration();
+	Precedes(readSensors, ultraAI);//, AI, move);
 }
