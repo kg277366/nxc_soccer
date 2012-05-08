@@ -27,6 +27,7 @@
 #define IR_SEEKER IN_4
 
 #define MM2DEG(x)	(360 * x / MM_PER_TURN)
+#define DEG2MM(x) (x * MM_PER_TURN / 360)
 
 #define Q_SIZE 4;
 
@@ -100,7 +101,7 @@ void init() {
 
 void calibration() {
 
-	north = SensorHTCompass(COMPASS);
+	north = 360 - SensorHTCompass(COMPASS);
 	sensorsValues.compass = 0;
 
 
@@ -213,7 +214,7 @@ task ultraAI() {
 }
 
 void sensorCompass() {
-	sensorsValues.compass = SensorHTCompass(COMPASS) - north;
+	sensorsValues.compass = (SensorHTCompass(COMPASS) + north) % 360;
 	myPos.heading = sensorsValues.compass;
 }
 
