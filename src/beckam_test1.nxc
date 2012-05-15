@@ -177,7 +177,7 @@ int aimingObstacle(int cut_off) { // more advanced - need exact position tracing
 }
 
 #define BALL_CUT_OFF 250
-#define CLOSE_BALL_DIST 80
+#define CLOSE_BALL_DIST 100
 
 // simple test for aiming ball
 int aimingBall() {
@@ -256,28 +256,30 @@ task oneShotAI2() {
         if (myPos.heading < 90 || myPos.heading > 270) {
           // facing north. trying rotation.
         } else {
-          run(-100);
+          run(-120);
           if (myPos.heading < 180) {
             // going for right
-            rotate2ws(45, SLOW_ROT);
+            rotate2ws(90, SLOW_ROT);
             run(120);
-            rotate2ws(-45, SLOW_ROT);
-            run(100);
+            rotate2ws(-90, SLOW_ROT);
+            run(120);
         rotate1ws(- myPos.heading,
             SLOW_ROT);
           } else {
           //going for right
-            rotate2ws(-45, SLOW_ROT);
+            rotate2ws(-90, SLOW_ROT);
             run(120);
-            rotate2ws(45, SLOW_ROT);
-            run(100);
+            rotate2ws(90, SLOW_ROT);
+            run(120);
         rotate1ws(360 - myPos.heading,
             SLOW_ROT);
           }
         }
         PlaySound(SOUND_CLICK);
         rotate1ws(degsToGoal(), SLOW_ROT);
-        runI(LEAD_SPEED);
+        // Jest jeszcze opcja zeby kopal od razu.
+        
+        /* runI(LEAD_SPEED);
         while (aimingBall() && myPos.y < SHOT_DIST_1) {
            Wait(50);
         }
@@ -287,8 +289,9 @@ task oneShotAI2() {
         } else {
           ai_state = SHOT_S;
         }
+        
       break;
-      case SHOT_S :
+      case SHOT_S :*/
         kick();
         ai_state = SEARCH_S;
       break;
